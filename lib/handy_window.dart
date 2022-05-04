@@ -6,7 +6,7 @@
 ///
 /// | Handy window | Flutter window |
 /// |---|---|
-/// | <image src="https://raw.githubusercontent.com/canonical/ubuntu-flutter-plugins/main/packages/handy_window/images/handy-window.png" width="430"/> | <image src="https://raw.githubusercontent.com/canonical/ubuntu-flutter-plugins/main/packages/handy_window/images/flutter-window.png" width="400"/> |
+/// | <image src="https://raw.githubusercontent.com/ubuntu-flutter-community/handy_window/main/images/handy-window.png" width="430"/> | <image src="https://raw.githubusercontent.com/ubuntu-flutter-community/handy_window/main/images/flutter-window.png" width="400"/> |
 ///
 /// ## Usage
 ///
