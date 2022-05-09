@@ -1,0 +1,9 @@
+build.ninja
+compile_commands.json
+.ninja*
+run
+meson-*/
+po/
+*.o
+*.so
+*.so.*
