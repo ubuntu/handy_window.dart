@@ -83,7 +83,7 @@ target_include_directories(handy PRIVATE
 set_target_properties(handy PROPERTIES
     SOVERSION 0
     PREFIX lib
-    OUTPUT_NAME handy-1
+    OUTPUT_NAME handy-flutter
 )
 
 find_package(PkgConfig REQUIRED)
