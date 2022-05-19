@@ -78,11 +78,9 @@ static gboolean hdy_window_draw(GtkWidget* widget, cairo_t* cr) {
 
 static void hdy_window_destroy(GtkWidget* widget) {
   if (IS_REENTRY(widget)) {
-    fprintf(stderr, "Reentrancy detected in hdy_window_destroy\n");
     gtk_window_destroy(widget);
   } else {
     GUARD_REENTRY(widget);
-    fprintf(stderr, "hdy_window_destroy\n");
     hdy_window_mixin_destroy(get_window_mixin(widget));
   }
 }
