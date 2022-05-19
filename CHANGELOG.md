@@ -1,3 +1,7 @@
+# 0.1.3
+
+* Fix RUNPATH to ensure that `libhandy_flutter.so` is found when deployed.
+
 ## 0.1.2
 
 * Fix build on Ubuntu 18.04 with old glib version < 2.58.
