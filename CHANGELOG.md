@@ -1,3 +1,7 @@
+# 0.1.4
+
+* Fix crash on window close.
+
 # 0.1.3
 
 * Fix RUNPATH to ensure that `libhandy_flutter.so` is found when deployed.
