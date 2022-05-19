@@ -1,3 +1,7 @@
+# 0.1.4+1
+
+* Clean up debug output
+
 # 0.1.4
 
 * Fix crash on window close.
