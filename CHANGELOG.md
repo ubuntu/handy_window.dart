@@ -1,3 +1,7 @@
+# 0.1.5
+
+* Fix -Wunused-parameter warnings.
+
 # 0.1.4+1
 
 * Clean up debug output
