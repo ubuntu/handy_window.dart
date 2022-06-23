@@ -100,14 +100,14 @@ static void copy_header_bar(HdyHeaderBar* hdy_header_bar,
       hdy_header_bar, gtk_header_bar_get_decoration_layout(gtk_header_bar));
 }
 
-static void update_header_bar_title(GtkWindow* window, GParamSpec* pspec,
+static void update_header_bar_title(GtkWindow* window, GParamSpec*,
                                     gpointer user_data) {
   GtkWidget* header_bar = GTK_WIDGET(user_data);
   const gchar* title = gtk_window_get_title(window);
   hdy_header_bar_set_title(HDY_HEADER_BAR(header_bar), title);
 }
 
-static void update_header_bar_buttons(GtkWindow* window, GParamSpec* pspec,
+static void update_header_bar_buttons(GtkWindow* window, GParamSpec*,
                                       gpointer user_data) {
   GtkWidget* header_bar = GTK_WIDGET(user_data);
   gboolean deletable = gtk_window_get_deletable(window);
