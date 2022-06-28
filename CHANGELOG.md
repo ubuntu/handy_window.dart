@@ -1,3 +1,7 @@
+# 0.1.6
+
+* Check for CSD support & respect the GTK_CSD environment variable.
+
 # 0.1.5
 
 * Fix -Wunused-parameter warnings.
