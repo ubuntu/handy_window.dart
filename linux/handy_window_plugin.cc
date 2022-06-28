@@ -146,8 +146,29 @@ static gboolean sanity_check_view(FlView* view) {
   return true;
 }
 
+static gboolean use_csd(GtkWidget* window) {
+  // the screen must be composited and support alpha visuals for the shadow
+  GdkScreen* screen = gtk_window_get_screen(GTK_WINDOW(window));
+  if (!gdk_screen_is_composited(screen) ||
+      !gdk_screen_get_rgba_visual(screen)) {
+    return false;
+  }
+
+  // disable if GTK_CSD != 1
+  const gchar* gtk_csd = g_getenv("GTK_CSD");
+  if (gtk_csd != nullptr && g_strcmp0(gtk_csd, "1") != 0) {
+    return false;
+  }
+
+  return true;
+}
+
 static void setup_handy_window(FlView* view) {
   GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(view));
+
+  if (!use_csd(window)) {
+    return;
+  }
 
   if (!sanity_check_window(window) || !sanity_check_view(view)) {
     g_warning(
