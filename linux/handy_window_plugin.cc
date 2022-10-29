@@ -178,20 +178,24 @@ static void setup_handy_window(FlView* view) {
   }
 
   // titlebar
-  GtkWidget* header_bar = hdy_header_bar_new();
+  GtkWidget* header_bar = nullptr;
   GtkWidget* titlebar = gtk_window_get_titlebar(GTK_WINDOW(window));
+  const gchar* title = gtk_window_get_title(GTK_WINDOW(window));
   if (GTK_IS_HEADER_BAR(titlebar)) {
+    header_bar = hdy_header_bar_new();
     copy_header_bar(HDY_HEADER_BAR(header_bar), GTK_HEADER_BAR(titlebar));
     gtk_window_set_titlebar(GTK_WINDOW(window), nullptr);
-  } else {
-    const gchar* title = gtk_window_get_title(GTK_WINDOW(window));
+  } else if (title != nullptr) {
+    header_bar = hdy_header_bar_new();
     hdy_header_bar_set_title(HDY_HEADER_BAR(header_bar), title);
     gtk_window_set_title(GTK_WINDOW(window), nullptr);
   }
-  g_signal_connect(G_OBJECT(window), "notify::title",
-                   G_CALLBACK(update_header_bar_title), header_bar);
-  g_signal_connect(G_OBJECT(window), "notify::deletable",
-                   G_CALLBACK(update_header_bar_buttons), header_bar);
+  if (header_bar != nullptr) {
+    g_signal_connect(G_OBJECT(window), "notify::title",
+                     G_CALLBACK(update_header_bar_title), header_bar);
+    g_signal_connect(G_OBJECT(window), "notify::deletable",
+                     G_CALLBACK(update_header_bar_buttons), header_bar);
+  }
 
   // view
   gtk_widget_hide(GTK_WIDGET(view));
@@ -231,7 +235,9 @@ static void setup_handy_window(FlView* view) {
 
   gtk_widget_show(window);
   gtk_widget_show(box);
-  gtk_widget_show(header_bar);
+  if (header_bar != nullptr) {
+    gtk_widget_show(header_bar);
+  }
   gtk_widget_show(GTK_WIDGET(view));
 }
 
