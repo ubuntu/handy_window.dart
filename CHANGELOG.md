@@ -1,3 +1,7 @@
+# 0.1.7
+
+* Allow leaving GTK/HDY header bar out.
+
 # 0.1.6
 
 * Check for CSD support & respect the GTK_CSD environment variable.
