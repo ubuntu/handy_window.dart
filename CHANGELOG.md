@@ -1,3 +1,7 @@
+# 0.1.8
+
+* Add missing null check for the header bar.
+
 # 0.1.7
 
 * Allow leaving GTK/HDY header bar out.
