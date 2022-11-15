@@ -230,7 +230,9 @@ static void setup_handy_window(FlView* view) {
   // layout
   GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(box));
-  gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(header_bar), false, true, 0);
+  if (header_bar != nullptr) {
+    gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(header_bar), false, true, 0);
+  }
   gtk_box_pack_end(GTK_BOX(box), GTK_WIDGET(view), true, true, 0);
 
   gtk_widget_show(window);
