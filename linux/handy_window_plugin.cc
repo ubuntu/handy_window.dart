@@ -188,6 +188,7 @@ static void setup_handy_window(FlView* view) {
   } else if (title != nullptr) {
     header_bar = hdy_header_bar_new();
     hdy_header_bar_set_title(HDY_HEADER_BAR(header_bar), title);
+    hdy_header_bar_set_show_close_button(HDY_HEADER_BAR(header_bar), TRUE);
     gtk_window_set_title(GTK_WINDOW(window), nullptr);
   }
   if (header_bar != nullptr) {
