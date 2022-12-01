@@ -1,3 +1,7 @@
+# 0.1.9
+
+* Fix missing close button on non-GNOME X11 platforms (#13).
+
 # 0.1.8
 
 * Add missing null check for the header bar.
