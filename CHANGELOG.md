@@ -1,3 +1,7 @@
+# 0.2.0
+
+* Add soft light border in dark theme (#20).
+
 # 0.1.9
 
 * Fix missing close button on non-GNOME X11 platforms (#13).
