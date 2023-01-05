@@ -8,12 +8,17 @@ set(PLUGIN_NAME "handy_window_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
   "handy_window_plugin.cc"
+  "settings/handy_gnome_settings.cc"
+  "settings/handy_settings_portal.cc"
+  "settings/handy_settings.cc"
 )
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
 target_compile_options(${PLUGIN_NAME} PRIVATE -Wall -Wextra -Werror)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
+target_include_directories(${PLUGIN_NAME} PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/settings")
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
