@@ -1,3 +1,8 @@
+# 0.2.1
+
+* Compile stylesheet using sass (#21).
+* Mimic Libadwaita window and headerbar style (#22).
+
 # 0.2.0
 
 * Add soft light border in dark theme (#20).
