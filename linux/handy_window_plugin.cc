@@ -1,6 +1,6 @@
 #include "include/handy_window/handy_window_plugin.h"
 
-#if HAVE_LIBHANDY
+#ifdef HAVE_LIBHANDY
 
 #include <flutter_linux/flutter_linux.h>
 #include <gtk/gtk.h>
@@ -10,6 +10,7 @@
 
 #include "handy_settings.h"
 
+#ifndef USE_LIBHANDY
 #define _HANDY_INSIDE
 #include "hdy-window-mixin-private.h"
 #undef _HANDY_INSIDE
@@ -147,6 +148,7 @@ static gboolean sanity_check_view(FlView* view) {
   }
   return true;
 }
+#endif  // USE_LIBHANDY
 
 static gboolean use_csd(GtkWidget* window) {
   // the screen must be composited and support alpha visuals for the shadow
@@ -203,6 +205,7 @@ static void setup_handy_window(FlView* view) {
     return;
   }
 
+#ifndef USE_LIBHANDY
   if (!sanity_check_window(window) || !sanity_check_view(view)) {
     g_warning(
         "Setting up a Handy window failed. A normal GTK window will be used "
@@ -275,6 +278,7 @@ static void setup_handy_window(FlView* view) {
     gtk_widget_show(header_bar);
   }
   gtk_widget_show(GTK_WIDGET(view));
+#endif  // USE_LIBHANDY
 
   // css
   HandySettings* settings = handy_settings_new();

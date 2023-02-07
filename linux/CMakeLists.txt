@@ -26,6 +26,7 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 
 # libhandy requires g_atomic_ref_count_init/inc/dec available since 2.58
 pkg_check_modules(GLIB glib-2.0>=2.58)
+
 if(GLIB_FOUND)
   # List of absolute paths to libraries that should be bundled with the plugin
   set(handy_window_bundled_libraries
@@ -33,9 +34,13 @@ if(GLIB_FOUND)
     PARENT_SCOPE
   )
 
+  if(USE_LIBHANDY)
+    target_compile_definitions(${PLUGIN_NAME} PRIVATE USE_LIBHANDY)
+  endif()
+
   add_subdirectory(libhandy)
-  add_definitions(-DHAVE_LIBHANDY)
-  target_link_libraries(${PLUGIN_NAME} PRIVATE handy)
+  target_compile_definitions(${PLUGIN_NAME} PUBLIC HAVE_LIBHANDY)
+  target_link_libraries(${PLUGIN_NAME} PUBLIC handy)
   set_target_properties(${PLUGIN_NAME}
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
