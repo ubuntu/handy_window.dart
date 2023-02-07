@@ -6,12 +6,14 @@ import 'package:yaru/yaru.dart';
 
 void main() {
   runApp(
-    MaterialApp(
-      theme: yaruLight,
-      darkTheme: yaruDark,
-      home: const HandyPage(),
-      debugShowCheckedModeBanner: false,
-    ),
+    YaruTheme(builder: (context, yaru, child) {
+      return MaterialApp(
+        theme: yaru.theme,
+        darkTheme: yaru.darkTheme,
+        debugShowCheckedModeBanner: false,
+        home: const HandyPage(),
+      );
+    }),
   );
 }
 
