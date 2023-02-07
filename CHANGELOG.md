@@ -1,3 +1,9 @@
+# 0.3.0
+
+* Update dependency yaru to ^0.5.0 by @renovate in https://github.com/ubuntu-flutter-community/handy_window/pull/25
+* Add option to use libhandy without widget tree manipulation by @jpnurmi in https://github.com/ubuntu-flutter-community/handy_window/pull/28
+* Revert shadow to Gtk3 one by @Jupi007 in https://github.com/ubuntu-flutter-community/handy_window/pull/29
+
 # 0.2.1
 
 * Compile stylesheet using sass (#21).
