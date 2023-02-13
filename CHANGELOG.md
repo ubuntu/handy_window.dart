@@ -1,3 +1,7 @@
+# 0.3.1
+
+* Fix Adwaita white line on top when maximized by @Jupi007 in https://github.com/ubuntu-flutter-community/handy_window/pull/32
+
 # 0.3.0
 
 * Update dependency yaru to ^0.5.0 by @renovate in https://github.com/ubuntu-flutter-community/handy_window/pull/25
