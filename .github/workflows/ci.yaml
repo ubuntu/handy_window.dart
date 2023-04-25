@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   push:
@@ -8,7 +8,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  bundle:
+  analyze:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+      - run: flutter pub get
+      - run: flutter analyze
+
+  format:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+      - run: flutter pub get
+      - run: flutter format --set-exit-if-changed .
+
+  linux:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
@@ -22,6 +38,14 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
     - run: flutter build linux -v
       working-directory: example
+
+  pub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+      - run: flutter pub get
+      - run: flutter pub publish --dry-run
 
   snap:
     runs-on: ubuntu-20.04
