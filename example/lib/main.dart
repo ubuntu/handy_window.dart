@@ -35,8 +35,8 @@ class HandyPage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: Row(
-        children: const [
+      bottomNavigationBar: const Row(
+        children: [
           RotatedArrow(angle: math.pi / 4),
           Spacer(),
           RotatedArrow(angle: -math.pi / 4),
