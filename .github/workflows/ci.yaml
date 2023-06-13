@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.7.12'
+  FLUTTER_VERSION: '3.10.4'
 
 jobs:
   analyze:
@@ -31,7 +31,7 @@ jobs:
           channel: 'stable'
           flutter-version: ${{env.FLUTTER_VERSION}}
       - run: flutter pub get
-      - run: flutter format --set-exit-if-changed .
+      - run: dart format --set-exit-if-changed .
 
   linux:
     runs-on: ${{matrix.os}}
