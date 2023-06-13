@@ -11,7 +11,7 @@ dependencies:
   handy_window:
     path: ../
   url_launcher: ^6.1.0
-  yaru: ^0.7.0
+  yaru: ^0.8.0
 
 dev_dependencies:
   flutter_lints: ^2.0.0
