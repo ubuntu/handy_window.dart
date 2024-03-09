@@ -1,5 +1,12 @@
 $variant: 'light' !default;
 
+window {
+  background-color: if($variant=='light',
+      white,
+      #252525, // darkJet
+    );
+}
+
 // Mimic Libadwaita window and headerbar style
 
 window.csd.unified {
