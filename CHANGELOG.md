@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 (2024-03-10)
+
+## What's Changed
+* chore(GithubActions): fix changelog github action by @Jupi007 in https://github.com/ubuntu/handy_window.dart/pull/49
+
+
+**Full Changelog**: https://github.com/ubuntu/handy_window.dart/compare/v0.4.0...v0.4.1
+
 ## 0.4.0 (2024-03-09)
 
 ## What's Changed
