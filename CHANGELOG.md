@@ -49,6 +49,13 @@
 
 * Fix RUNPATH to ensure that `libhandy_flutter.so` is found when deployed.
 
+## [0.4.0](https://github.com/ubuntu/handy_window.dart/compare/v0.3.1...v0.4.0) (2024-03-09)
+
+
+### Features
+
+* use yaru.dart colors for window background ([#47](https://github.com/ubuntu/handy_window.dart/issues/47)) ([5f0dbaf](https://github.com/ubuntu/handy_window.dart/commit/5f0dbafe41ba1901718a2b5e52e1c7c083c90a05))
+
 ## 0.1.2
 
 * Fix build on Ubuntu 18.04 with old glib version < 2.58.
