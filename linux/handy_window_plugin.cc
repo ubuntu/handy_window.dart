@@ -76,6 +76,14 @@ static void hdy_window_forall(GtkContainer* container,
 }
 
 static gboolean hdy_window_draw(GtkWidget* widget, cairo_t* cr) {
+  // Only bypass mixin when fullscreen/maximized to prevent recursion,
+  // because hdy_window_mixin_draw calls original draw in these cases.
+  GtkWindow* window = GTK_WINDOW(widget);
+  if (gtk_window_is_maximized(window) ||
+      (gdk_window_get_state(gtk_widget_get_window(widget)) &
+       GDK_WINDOW_STATE_FULLSCREEN)) {
+    return gtk_window_draw(widget, cr);
+  }
   return hdy_window_mixin_draw(get_window_mixin(widget), cr);
 }
 
