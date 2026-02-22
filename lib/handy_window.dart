@@ -6,7 +6,7 @@
 ///
 /// | Handy window | Flutter window |
 /// |---|---|
-/// | <image src="https://raw.githubusercontent.com/ubuntu-flutter-community/handy_window/main/images/handy-window.png" width="430"/> | <image src="https://raw.githubusercontent.com/ubuntu-flutter-community/handy_window/main/images/flutter-window.png" width="400"/> |
+/// | <img src="https://raw.githubusercontent.com/ubuntu-flutter-community/handy_window/main/images/handy-window.png" width="430"/> | <img src="https://raw.githubusercontent.com/ubuntu-flutter-community/handy_window/main/images/flutter-window.png" width="400"/> |
 ///
 /// ## Usage
 ///
@@ -44,4 +44,4 @@
 ///    gtk_widget_grab_focus(GTK_WIDGET(view));
 ///  }
 /// ```
-library handy_window;
+library;
