@@ -18,7 +18,7 @@ void main() {
 }
 
 class HandyPage extends StatelessWidget {
-  const HandyPage({super.key});
+  const HandyPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +48,10 @@ class HandyPage extends StatelessWidget {
 
 class ClickableLink extends StatelessWidget {
   const ClickableLink({
-    super.key,
+    Key? key,
     required this.url,
     required this.child,
-  });
+  }) : super(key: key);
 
   final String url;
   final Widget child;
@@ -75,7 +75,7 @@ class ClickableLink extends StatelessWidget {
 }
 
 class RotatedArrow extends StatelessWidget {
-  const RotatedArrow({super.key, required this.angle});
+  const RotatedArrow({Key? key, required this.angle}) : super(key: key);
 
   final double angle;
 
