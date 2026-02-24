@@ -6,26 +6,26 @@ import 'package:yaru/yaru.dart';
 
 void main() {
   runApp(
-    YaruTheme(builder: (context, yaru, child) {
-      return MaterialApp(
-        theme: yaru.theme,
-        darkTheme: yaru.darkTheme,
-        debugShowCheckedModeBanner: false,
-        home: const HandyPage(),
-      );
-    }),
+    YaruTheme(
+      builder: (context, yaru, child) {
+        return MaterialApp(
+          theme: yaru.theme,
+          darkTheme: yaru.darkTheme,
+          debugShowCheckedModeBanner: false,
+          home: const HandyPage(),
+        );
+      },
+    ),
   );
 }
 
 class HandyPage extends StatelessWidget {
-  const HandyPage({Key? key}) : super(key: key);
+  const HandyPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Handy Window'),
-      ),
+      appBar: AppBar(title: const Text('Handy Window')),
       body: const Center(
         child: ClickableLink(
           url: 'https://gnome.pages.gitlab.gnome.org/libhandy',
@@ -47,11 +47,7 @@ class HandyPage extends StatelessWidget {
 }
 
 class ClickableLink extends StatelessWidget {
-  const ClickableLink({
-    Key? key,
-    required this.url,
-    required this.child,
-  }) : super(key: key);
+  const ClickableLink({super.key, required this.url, required this.child});
 
   final String url;
   final Widget child;
@@ -75,7 +71,7 @@ class ClickableLink extends StatelessWidget {
 }
 
 class RotatedArrow extends StatelessWidget {
-  const RotatedArrow({Key? key, required this.angle}) : super(key: key);
+  const RotatedArrow({super.key, required this.angle});
 
   final double angle;
 
