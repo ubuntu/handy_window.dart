@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.1 (2026-02-24)
+
+## What's Changed
+* chore(GithubActions): fix changelog github action by @Jupi007 in https://github.com/ubuntu/handy_window.dart/pull/49
+* chore: update ci by @Feichtmeier in https://github.com/ubuntu/handy_window.dart/pull/57
+* fix: prevent crash on fullscreen by bypassing mixin draw by @dongfengweixiao in https://github.com/ubuntu/handy_window.dart/pull/55
+* docs: add usage instructions for new Flutter project structure by @dongfengweixiao in https://github.com/ubuntu/handy_window.dart/pull/56
+
+## New Contributors
+* @Feichtmeier made their first contribution in https://github.com/ubuntu/handy_window.dart/pull/57
+* @dongfengweixiao made their first contribution in https://github.com/ubuntu/handy_window.dart/pull/55
+
+**Full Changelog**: https://github.com/ubuntu/handy_window.dart/compare/v0.4.0...v0.4.1
+
 ## 0.4.0 (2024-03-09)
 
 ## What's Changed
