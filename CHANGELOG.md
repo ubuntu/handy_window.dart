@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 (2026-02-26)
+
+## What's Changed
+* chore: update Flutter SDK version to >=1.20.0 in pubspec.yaml by @Feichtmeier in https://github.com/ubuntu/handy_window.dart/pull/58
+
+
+**Full Changelog**: https://github.com/ubuntu/handy_window.dart/compare/v0.4.1...v0.4.2
+
 ## 0.4.1 (2026-02-24)
 
 ## What's Changed
