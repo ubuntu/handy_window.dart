@@ -9,6 +9,7 @@
 #include <functional>
 
 #include "handy_settings.h"
+#include "window_frame.h"
 
 #ifndef USE_LIBHANDY
 #define _HANDY_INSIDE
@@ -280,12 +281,19 @@ static void setup_handy_window(FlView* view) {
   }
   gtk_box_pack_end(GTK_BOX(box), GTK_WIDGET(view), true, true, 0);
 
+  window_frame_attach(GTK_WINDOW(window), view);
+
   gtk_widget_show(window);
   gtk_widget_show(box);
   if (header_bar != nullptr) {
     gtk_widget_show(header_bar);
   }
   gtk_widget_show(GTK_WIDGET(view));
+#else
+  // Only Handy windows draw their corners through libhandy.
+  if (HDY_IS_WINDOW(window) || HDY_IS_APPLICATION_WINDOW(window)) {
+    window_frame_attach(GTK_WINDOW(window), view);
+  }
 #endif  // USE_LIBHANDY
 
   // css

@@ -11,6 +11,7 @@ add_library(${PLUGIN_NAME} SHARED
   "settings/handy_gnome_settings.cc"
   "settings/handy_settings_portal.cc"
   "settings/handy_settings.cc"
+  "window_frame.cc"
 )
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
