@@ -25,6 +25,14 @@ jobs:
       - run: flutter pub get
       - run: dart format --set-exit-if-changed .
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: kuhnroyal/flutter-fvm-config-action/setup@v3
+      - run: flutter pub get
+      - run: flutter test
+
   linux:
     runs-on: ${{matrix.os}}
     strategy:
