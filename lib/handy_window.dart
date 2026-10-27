@@ -44,4 +44,29 @@
 ///    gtk_widget_grab_focus(GTK_WIDGET(view));
 ///  }
 /// ```
+///
+/// ## Faster rounded corners
+///
+/// Under themes that round the window's corners, such as Yaru, libhandy masks
+/// them by drawing the whole window offscreen, which makes GTK read every
+/// Flutter frame back from the GPU and makes scrolling and animations stutter.
+/// To have Flutter paint the same corners instead, call [enableWindowFrame]
+/// before `runApp()` and wrap the app in a [WindowFrame]:
+///
+/// ```dart
+/// Future<void> main() async {
+///   WidgetsFlutterBinding.ensureInitialized();
+///   final windowFrame = await enableWindowFrame();
+///   runApp(WindowFrame(style: windowFrame, child: const MyApp()));
+/// }
+/// ```
+///
+/// The window looks the same either way, except that transparent parts of the
+/// app show the window's background. Flutter can only paint the corners when
+/// its view fills the window, as in apps that draw their own title bar, for
+/// example with `YaruWindowTitleBar` from the yaru package. Elsewhere, such as
+/// under a GTK header bar or on X11, libhandy keeps painting them.
 library;
+
+export 'src/window_frame.dart'
+    show WindowFrame, WindowFrameStyle, enableWindowFrame;
