@@ -16,32 +16,92 @@
 ///   handy_window:
 /// ```
 ///
-/// Modify `linux/my_application.cc` to register plugins before showing the Flutter
-/// window and view:
-///
-/// ```diff
-/// diff --git a/linux/my_application.cc b/linux/my_application.cc
-/// index fa74baa..3133755 100644
-/// --- a/linux/my_application.cc
-/// +++ b/linux/my_application.cc
-/// @@ -48,17 +48,17 @@ static void my_application_activate(GApplication* application) {
-///    }
-///
-///    gtk_window_set_default_size(window, 1280, 720);
-/// -  gtk_widget_show(GTK_WIDGET(window));
-///
-///    g_autoptr(FlDartProject) project = fl_dart_project_new();
-///    fl_dart_project_set_dart_entrypoint_arguments(project, self->dart_entrypoint_arguments);
-///
-///    FlView* view = fl_view_new(project);
-/// -  gtk_widget_show(GTK_WIDGET(view));
-///    gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
-///
-///    fl_register_plugins(FL_PLUGIN_REGISTRY(view));
-///
-/// +  gtk_widget_show(GTK_WIDGET(window));
-/// +  gtk_widget_show(GTK_WIDGET(view));
-///    gtk_widget_grab_focus(GTK_WIDGET(view));
-///  }
+/// In `lib/main.dart`, wrap `MaterialApp.builder` with [HandyWindowFrame]:
+/// ```dart
+/// MaterialApp(
+///   builder: (context, child) => HandyWindowFrame(child: child!),
+///   ...
+/// )
 /// ```
 library;
+
+import 'dart:async';
+
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
+const _windowFrameChannel = EventChannel('handy_window/window_frame');
+
+// Clip in Flutter so GTK skips offscreen Cairo masking and glReadPixels.
+class HandyWindowFrame extends StatefulWidget {
+  const HandyWindowFrame({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<HandyWindowFrame> createState() => _HandyWindowFrameState();
+}
+
+// Preserve backwards-compatibility with earlier WindowFrame proposals.
+typedef WindowFrame = HandyWindowFrame;
+
+class _HandyWindowFrameState extends State<HandyWindowFrame> {
+  StreamSubscription<Object?>? _subscription;
+  double _cornerRadius = 0;
+  bool _hasRim = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = _windowFrameChannel
+        .receiveBroadcastStream()
+        // Widget tests have no native runner channel; leave unclipped.
+        .handleError(
+          (Object _) {},
+          test: (error) => error is MissingPluginException,
+        )
+        .listen((event) {
+          if (event case {'radius': final num r, 'rim': final bool rim}) {
+            final radius = r.toDouble();
+            if (radius != _cornerRadius || rim != _hasRim) {
+              setState(() {
+                _cornerRadius = radius;
+                _hasRim = rim;
+              });
+            }
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_subscription?.cancel());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var content = widget.child;
+    if (_hasRim) {
+      content = DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: _cornerRadius > 0
+              ? BorderRadius.circular(_cornerRadius)
+              : null,
+          border: Border.all(
+            color: const Color.fromRGBO(255, 255, 255, 0.07),
+          ),
+        ),
+        child: content,
+      );
+    }
+    if (_cornerRadius > 0) {
+      content = ClipRRect(
+        borderRadius: BorderRadius.circular(_cornerRadius),
+        child: content,
+      );
+    }
+    return content;
+  }
+}

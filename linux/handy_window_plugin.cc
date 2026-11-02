@@ -6,6 +6,8 @@
 #include <gtk/gtk.h>
 #include <handy.h>
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 
 #include "handy_settings.h"
@@ -206,7 +208,195 @@ static void load_css(HandySettings* settings) {
   }
 }
 
-static void setup_handy_window(FlView* view) {
+struct HandyWindowData {
+  GtkWidget* window = nullptr;
+  FlView* view = nullptr;
+  FlEventChannel* channel = nullptr;
+  GtkStyleContext* decoration_context = nullptr;
+  gboolean channel_listening = FALSE;
+  gboolean had_first_frame = FALSE;
+  double corner_radius = 0.0;
+  gboolean has_rim = FALSE;
+};
+
+static void send_window_frame_state(HandyWindowData* self) {
+  if (!self->channel_listening || self->channel == nullptr) {
+    return;
+  }
+  g_autoptr(FlValue) value = fl_value_new_map();
+  fl_value_set_string_take(value, "radius",
+                           fl_value_new_float(self->corner_radius));
+  fl_value_set_string_take(value, "rim",
+                           fl_value_new_bool(self->has_rim));
+  g_autoptr(GError) error = nullptr;
+  if (!fl_event_channel_send(self->channel, value, nullptr, &error)) {
+    g_warning("Failed to send handy window frame state: %s", error->message);
+  }
+}
+
+// Let the compositor skip blending behind the non-rounded window interior.
+static void update_opaque_region(HandyWindowData* self) {
+  if (self->window == nullptr || self->view == nullptr) {
+    return;
+  }
+  GdkWindow* gdk_window = gtk_widget_get_window(self->window);
+  if (gdk_window == nullptr) {
+    return;
+  }
+  GtkAllocation alloc{};
+  gtk_widget_get_allocation(GTK_WIDGET(self->view), &alloc);
+  if (alloc.width <= 0 || alloc.height <= 0) {
+    return;
+  }
+  const int inset = static_cast<int>(std::ceil(self->corner_radius));
+  if (alloc.width <= inset * 2 || alloc.height <= inset * 2) {
+    return;
+  }
+  cairo_rectangle_int_t interior = {
+      alloc.x + inset,
+      alloc.y + inset,
+      alloc.width - inset * 2,
+      alloc.height - inset * 2,
+  };
+  cairo_region_t* region = cairo_region_create_rectangle(&interior);
+  gdk_window_set_opaque_region(gdk_window, region);
+  cairo_region_destroy(region);
+}
+
+static void update_geometry(HandyWindowData* self) {
+  if (self->window == nullptr) {
+    return;
+  }
+  GdkWindowState state = static_cast<GdkWindowState>(0);
+  GdkWindow* gdk_window = gtk_widget_get_window(self->window);
+  if (gdk_window != nullptr) {
+    state = gdk_window_get_state(gdk_window);
+  }
+  gboolean is_floating = (state & (GDK_WINDOW_STATE_MAXIMIZED |
+                                   GDK_WINDOW_STATE_FULLSCREEN |
+                                   GDK_WINDOW_STATE_TILED)) == 0;
+  gint radius = 0;
+  if (is_floating) {
+    GtkStyleContext* context = gtk_widget_get_style_context(self->window);
+    gtk_style_context_get(context, gtk_style_context_get_state(context),
+                          "border-radius", &radius, nullptr);
+  }
+  self->corner_radius = radius > 0 ? radius : 0;
+  self->has_rim = is_floating;
+  send_window_frame_state(self);
+  update_opaque_region(self);
+}
+
+static GtkStyleContext* create_decoration_context(GtkWidget* window) {
+  GtkStyleContext* parent = gtk_widget_get_style_context(window);
+  GtkStyleContext* child = gtk_style_context_new();
+  gtk_style_context_set_parent(child, parent);
+  gtk_style_context_set_screen(child, gtk_style_context_get_screen(parent));
+  g_autoptr(GtkWidgetPath) path = gtk_widget_path_new();
+  gtk_widget_path_append_for_widget(path, window);
+  gint position = gtk_widget_path_append_type(path, GTK_TYPE_WIDGET);
+  gtk_widget_path_iter_set_object_name(path, position, "decoration");
+  gtk_style_context_set_path(child, path);
+  gtk_style_context_set_state(child, gtk_style_context_get_state(parent));
+  return child;
+}
+
+static void on_style_updated(HandyWindowData* self) {
+  if (self->decoration_context != nullptr && self->window != nullptr) {
+    GtkStyleContext* parent = gtk_widget_get_style_context(self->window);
+    gtk_style_context_set_state(self->decoration_context,
+                                gtk_style_context_get_state(parent));
+  }
+  update_geometry(self);
+}
+
+static gboolean on_window_state_event(GtkWidget*,
+                                      GdkEventWindowState*,
+                                      gpointer user_data) {
+  auto* self = static_cast<HandyWindowData*>(user_data);
+  update_geometry(self);
+  return GDK_EVENT_PROPAGATE;
+}
+
+static void on_size_allocate(HandyWindowData* self) {
+  update_opaque_region(self);
+}
+
+static void on_first_frame(FlView* view, gpointer user_data) {
+  auto* self = static_cast<HandyWindowData*>(user_data);
+  self->had_first_frame = TRUE;
+  // Clear view background on frame 1 to avoid overdraw behind rounded corners.
+  GdkRGBA transparent = {0.0, 0.0, 0.0, 0.0};
+  fl_view_set_background_color(view, &transparent);
+  update_geometry(self);
+  gtk_widget_queue_draw(self->window);
+}
+
+static FlMethodErrorResponse* on_window_frame_listen(FlEventChannel*,
+                                                     FlValue*,
+                                                     gpointer user_data) {
+  auto* self = static_cast<HandyWindowData*>(user_data);
+  self->channel_listening = TRUE;
+  send_window_frame_state(self);
+  return nullptr;
+}
+
+static FlMethodErrorResponse* on_window_frame_cancel(FlEventChannel*,
+                                                     FlValue*,
+                                                     gpointer user_data) {
+  auto* self = static_cast<HandyWindowData*>(user_data);
+  self->channel_listening = FALSE;
+  return nullptr;
+}
+
+// Draw CSD shadow directly and skip libhandy mixin when Flutter clips corners.
+static gboolean on_window_draw(GtkWidget* widget,
+                               cairo_t* cr,
+                               gpointer user_data) {
+  auto* self = static_cast<HandyWindowData*>(user_data);
+  if (!self->channel_listening || !self->had_first_frame) {
+    return GDK_EVENT_PROPAGATE;
+  }
+  if (gtk_cairo_should_draw_window(cr, gtk_widget_get_window(widget))) {
+    GtkAllocation alloc{};
+    gtk_widget_get_allocation(widget, &alloc);
+    GtkAllocation content_alloc = alloc;
+    GtkWidget* child = gtk_bin_get_child(GTK_BIN(widget));
+    if (child != nullptr) {
+      gtk_widget_get_allocation(child, &content_alloc);
+    }
+    GtkBorder margin{};
+    gtk_style_context_get_margin(
+        self->decoration_context,
+        gtk_style_context_get_state(self->decoration_context), &margin);
+    int left = std::max<int>(content_alloc.x - alloc.x, margin.left);
+    int top = std::max<int>(content_alloc.y - alloc.y, margin.top);
+    int right = std::max<int>(
+        alloc.width - content_alloc.width - content_alloc.x, margin.right);
+    int bottom = std::max<int>(
+        alloc.height - content_alloc.height - content_alloc.y, margin.bottom);
+    int width = alloc.width - left - right;
+    int height = alloc.height - top - bottom;
+    gtk_render_background(self->decoration_context, cr, left, top, width,
+                          height);
+    gtk_render_frame(self->decoration_context, cr, left, top, width, height);
+  }
+  GTK_WIDGET_CLASS(g_type_class_peek(GTK_TYPE_CONTAINER))->draw(widget, cr);
+  return GDK_EVENT_STOP;
+}
+
+static void free_handy_window_data(gpointer user_data) {
+  auto* self = static_cast<HandyWindowData*>(user_data);
+  if (self->channel != nullptr) {
+    g_clear_object(&self->channel);
+  }
+  if (self->decoration_context != nullptr) {
+    g_clear_object(&self->decoration_context);
+  }
+  g_free(self);
+}
+
+static void setup_handy_window(FlPluginRegistrar* registrar, FlView* view) {
   GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(view));
 
   if (!use_csd(window)) {
@@ -288,6 +478,31 @@ static void setup_handy_window(FlView* view) {
   gtk_widget_show(GTK_WIDGET(view));
 #endif  // USE_LIBHANDY
 
+  HandyWindowData* frame_data = g_new0(HandyWindowData, 1);
+  frame_data->window = window;
+  frame_data->view = view;
+  frame_data->decoration_context = create_decoration_context(window);
+
+  FlBinaryMessenger* messenger = fl_plugin_registrar_get_messenger(registrar);
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  frame_data->channel = fl_event_channel_new(
+      messenger, "handy_window/window_frame", FL_METHOD_CODEC(codec));
+  fl_event_channel_set_stream_handlers(frame_data->channel,
+                                       on_window_frame_listen,
+                                       on_window_frame_cancel, frame_data,
+                                       nullptr);
+
+  g_signal_connect(window, "draw", G_CALLBACK(on_window_draw), frame_data);
+  g_signal_connect(view, "first-frame", G_CALLBACK(on_first_frame), frame_data);
+  g_signal_connect_swapped(window, "style-updated",
+                           G_CALLBACK(on_style_updated), frame_data);
+  g_signal_connect_after(window, "window-state-event",
+                         G_CALLBACK(on_window_state_event), frame_data);
+  g_signal_connect_swapped(window, "size-allocate",
+                           G_CALLBACK(on_size_allocate), frame_data);
+  g_object_set_data_full(G_OBJECT(window), "handy_window_frame_data",
+                         frame_data, free_handy_window_data);
+
   // css
   HandySettings* settings = handy_settings_new();
   load_css(settings);
@@ -297,7 +512,7 @@ static void setup_handy_window(FlView* view) {
 
 void handy_window_plugin_register_with_registrar(FlPluginRegistrar* registrar) {
   FlView* view = fl_plugin_registrar_get_view(registrar);
-  setup_handy_window(view);
+  setup_handy_window(registrar, view);
 }
 #else
 void handy_window_plugin_register_with_registrar(FlPluginRegistrar*) {}
