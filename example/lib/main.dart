@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:handy_window/handy_window.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:yaru/yaru.dart';
 
@@ -13,7 +12,6 @@ void main() {
           theme: yaru.theme,
           darkTheme: yaru.darkTheme,
           debugShowCheckedModeBanner: false,
-          builder: (context, child) => HandyWindowFrame(child: child!),
           home: const HandyPage(),
         );
       },
