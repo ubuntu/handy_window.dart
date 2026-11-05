@@ -206,8 +206,7 @@ static void load_css(HandySettings* settings) {
   }
 }
 
-// Flutter draws the window corners and outline (HandyWindowCorners), so that
-// libhandy does not mask the corners by copying every frame from the GPU.
+// Flutter draws the corners and outline so libhandy stops copying every frame.
 struct HandyCorners {
   FlView* view;
   GtkWidget* window;
@@ -235,9 +234,7 @@ static void get_corners(GtkWidget* window, gint* radius, gboolean* outline) {
     gtk_style_context_get(context, gtk_style_context_get_state(context),
                           GTK_STYLE_PROPERTY_BORDER_RADIUS, radius, nullptr);
   }
-  // `window.csd.unified decoration-overlay` in assets/handy-window.scss. It
-  // only shows when libhandy masks the corners: otherwise Flutter's GL frame
-  // covers it.
+  // The csd.unified decoration-overlay shows only while libhandy masks.
   *outline = *radius > 0 && gtk_style_context_has_class(context, "csd") &&
              gtk_style_context_has_class(context, "unified");
 }
@@ -283,8 +280,7 @@ static void corners_method_cb(FlMethodChannel*, FlMethodCall* call,
   g_autoptr(GError) error = nullptr;
   gboolean responded;
   if (g_strcmp0(method, "getCorners") == 0) {
-    // Clipped corners must show through, not show the view's background,
-    // which is opaque black by default. It stays transparent afterwards.
+    // The view background is opaque black; clipped corners must show through.
     const GdkRGBA transparent = {};
     fl_view_set_background_color(corners->view, &transparent);
     get_corners(corners->window, &corners->radius, &corners->outline);
@@ -310,8 +306,7 @@ static void corners_method_cb(FlMethodChannel*, FlMethodCall* call,
   }
 }
 
-// Keeps a method call that races with the window closing from reaching the
-// freed HandyCorners.
+// Keeps a method call racing the window close away from freed corners.
 static void corners_gone_cb(FlMethodChannel*, FlMethodCall* call, gpointer) {
   fl_method_call_respond_not_implemented(call, nullptr);
 }
@@ -435,7 +430,7 @@ static void setup_handy_window(FlPluginRegistrar* registrar) {
   }
 #else
   // Flutter can draw the corners when its view is the Handy window's child.
-  // libhandy chains up to GtkWindow's draw when it does not mask them.
+  // libhandy chains to GtkWindow's draw when it does not mask them.
   if ((HDY_IS_APPLICATION_WINDOW(window) || HDY_IS_WINDOW(window)) &&
       gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(view))) ==
           window) {

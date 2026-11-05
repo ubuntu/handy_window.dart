@@ -21,8 +21,7 @@ void main() {
     expect(pixels.alpha(0, 199), 0);
     expect(pixels.alpha(399, 199), 0);
     expect(pixels.alpha(200, 100), 255);
-    // libhandy's mask circle covers 26-30% of this device pixel on the 45°
-    // line.
+    // libhandy's mask covers 26-30% of this device pixel on the 45° line.
     expect(pixels.alpha(8, 8), closeTo(72, 15));
   });
 
@@ -127,8 +126,7 @@ void main() {
     _mockWindow(tester, radius: 15);
     await tester.pumpWidget(
       const _Window(
-        // A separate layer holding half-opaque white: erasing only the window
-        // behind it would leave the corner at alpha 127.
+        // Half-opaque white layer; erasing behind it would leave alpha 127.
         child: RepaintBoundary(
           child: Opacity(
             opacity: 0.5,
@@ -208,8 +206,7 @@ void main() {
   });
 }
 
-/// Answers `getCorners` only when [reply] completes, so that a corner change
-/// can overtake it; returns the radii reported with `cornersDrawn`.
+/// getCorners waits for [reply]; returns the cornersDrawn radii.
 List<int?> _mockPendingWindow(
   WidgetTester tester,
   Completer<Map<Object?, Object?>?> reply,
@@ -232,9 +229,7 @@ List<int?> _mockPendingWindow(
   return drawn;
 }
 
-/// Answers `getCorners` like the native plugin for a window with the given
-/// scale factor, and returns the radii that the widget reports with
-/// `cornersDrawn`.
+/// Native-like getCorners for a scaled window; returns cornersDrawn radii.
 List<int?> _mockWindow(
   WidgetTester tester, {
   int radius = 0,

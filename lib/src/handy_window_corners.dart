@@ -4,29 +4,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// Rounds the corners of the Handy window and draws its outline in Flutter.
-///
-/// Without it, libhandy rounds the corners by copying every frame from the
-/// GPU to mask them, which makes scrolling and animations slow with themes
-/// that have rounded window corners, such as Yaru.
-///
-/// Use it once, around the whole app:
-///
-/// ```dart
-/// void main() {
-///   runApp(const HandyWindowCorners(child: MyApp()));
-/// }
-/// ```
-///
-/// The corners follow the window: the radius comes from the GTK theme, and
-/// maximized and fullscreen windows get square corners and no outline. In a
-/// window with a GTK header bar, and on other platforms, it shows [child] as
-/// it is and libhandy keeps rounding the corners.
+/// Rounds window corners in Flutter so libhandy stops copying every frame.
 class HandyWindowCorners extends StatefulWidget {
-  /// Creates a widget that rounds the window corners around [child].
   const HandyWindowCorners({super.key, required this.child});
 
-  /// The app.
   final Widget child;
 
   @override
@@ -35,14 +16,12 @@ class HandyWindowCorners extends StatefulWidget {
 
 class _HandyWindowCornersState extends State<HandyWindowCorners> {
   static const _channel = MethodChannel('handy_window');
-  // The instance that owns the channel. A replacement widget must not have
-  // the channel, or the corners, taken back by the instance it replaces.
+  // The instance that owns the channel, so a replacement cannot take it back.
   static _HandyWindowCornersState? _active;
 
   var _radius = 0;
   var _outline = false;
-  // Counts cornersChanged calls, so a getCorners reply taken before one is
-  // dropped instead of overriding the newer corners.
+  // Drops a getCorners reply taken before a cornersChanged call.
   var _cornerChanges = 0;
 
   @override
@@ -101,8 +80,7 @@ class _HandyWindowCornersState extends State<HandyWindowCorners> {
   }
 
   Future<void> _reportWhenShown(int radius) async {
-    // The frame with the new corners and two more, so that it is on screen
-    // before the window stops masking the corners.
+    // The frame with the new corners and two more, before handover.
     for (var i = 0; i < 3; i++) {
       await SchedulerBinding.instance.endOfFrame;
     }
@@ -111,8 +89,7 @@ class _HandyWindowCornersState extends State<HandyWindowCorners> {
     }
   }
 
-  /// Tells the window which radius Flutter draws, or null to hand the corners
-  /// back to libhandy.
+  /// Tells the window the radius Flutter draws; null hands the corners back.
   Future<void> _reportDrawn(int? radius) async {
     try {
       await _channel.invokeMethod<void>('cornersDrawn', radius);
@@ -142,10 +119,7 @@ class _HandyWindowCornersState extends State<HandyWindowCorners> {
 // `decoration-overlay` in assets/handy-window.scss: 1px of white at 7%.
 const _outlineColor = Color(0x12FFFFFF);
 
-/// Erases the corners outside the arcs and draws the outline over the app.
-///
-/// Impeller does not anti-alias clips on Linux, so each arc is a radial
-/// gradient with a ramp one device pixel wide, like libhandy's cairo masks.
+/// Erases outside each arc and draws the outline; Impeller cannot clip with AA.
 class _CornersPainter extends CustomPainter {
   const _CornersPainter({
     required this.radius,
@@ -163,8 +137,7 @@ class _CornersPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
     final halfPixel = 0.5 / devicePixelRatio;
-    // libhandy's masks: circles half a device pixel smaller than the radius
-    // that touch the window edges, see create_masks() in hdy-window-mixin.c.
+    // libhandy's masks: half-pixel smaller circles touching the window edges.
     final maskRadius = r - halfPixel;
     final ringEnd = r + halfPixel;
     double ringStop(double distance) => (distance / ringEnd).clamp(0.0, 1.0);
