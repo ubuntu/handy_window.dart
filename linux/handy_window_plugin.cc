@@ -206,7 +206,165 @@ static void load_css(HandySettings* settings) {
   }
 }
 
-static void setup_handy_window(FlView* view) {
+// Flutter draws the corners and outline so libhandy stops copying every frame.
+struct HandyCorners {
+  FlView* view;
+  GtkWidget* window;
+  FlMethodChannel* channel;
+  gboolean (*window_draw)(GtkWidget*, cairo_t*);
+  // The corners Dart last heard about; radius -1 while Dart does not listen.
+  gint radius;
+  gboolean outline;
+  // The radius Flutter has drawn; -1 while it draws none.
+  gint drawn_radius;
+  // TRUE once the engine has closed the channel.
+  gboolean channel_closed;
+};
+
+// The corners libhandy draws, see hdy_window_mixin_draw().
+static void get_corners(GtkWidget* window, gint* radius, gboolean* outline) {
+  GtkStyleContext* context = gtk_widget_get_style_context(window);
+  GdkWindow* gdk_window = gtk_widget_get_window(window);
+  // A visible title bar takes the window's top corners, so the view below it
+  // is square. HdyWindow's placeholder title bar has no height.
+  GtkWidget* titlebar = gtk_window_get_titlebar(GTK_WINDOW(window));
+  gboolean titlebar_takes_top = FALSE;
+  if (titlebar != nullptr && gtk_widget_get_visible(titlebar)) {
+    gint minimum_height;
+    gtk_widget_get_preferred_height(titlebar, &minimum_height, nullptr);
+    titlebar_takes_top = minimum_height > 0;
+  }
+  gboolean framed =
+      gtk_window_get_decorated(GTK_WINDOW(window)) &&
+      !gtk_style_context_has_class(context, "solid-csd") &&
+      !gtk_window_is_maximized(GTK_WINDOW(window)) &&
+      !titlebar_takes_top &&
+      !(gdk_window != nullptr &&
+        (gdk_window_get_state(gdk_window) & GDK_WINDOW_STATE_FULLSCREEN));
+  *radius = 0;
+  if (framed) {
+    gtk_style_context_get(context, gtk_style_context_get_state(context),
+                          GTK_STYLE_PROPERTY_BORDER_RADIUS, radius, nullptr);
+  }
+  // Flutter draws the csd.unified decoration-overlay only with the corners.
+  *outline = *radius > 0 && gtk_style_context_has_class(context, "csd") &&
+             gtk_style_context_has_class(context, "unified");
+}
+
+static FlValue* corners_value(gint radius, gboolean outline) {
+  FlValue* value = fl_value_new_map();
+  fl_value_set_string_take(value, "radius", fl_value_new_int(radius));
+  fl_value_set_string_take(value, "outline", fl_value_new_bool(outline));
+  return value;
+}
+
+// Runs before the class handler, where libhandy masks the corners.
+static gboolean corners_draw_cb(GtkWidget* window, cairo_t* cr,
+                                HandyCorners* corners) {
+  if (corners->radius < 0) {
+    return FALSE;
+  }
+
+  // Read where libhandy reads them, so that Dart hears about every change.
+  gint radius;
+  gboolean outline;
+  get_corners(window, &radius, &outline);
+  if (radius != corners->radius || outline != corners->outline) {
+    corners->radius = radius;
+    corners->outline = outline;
+    g_autoptr(FlValue) args = corners_value(radius, outline);
+    fl_method_channel_invoke_method(corners->channel, "cornersChanged", args,
+                                    nullptr, nullptr, nullptr);
+  }
+
+  // libhandy masks the corners until Flutter has drawn the current ones.
+  // Square windows cost libhandy no copy, and it draws their overlay.
+  if (radius == 0 || corners->drawn_radius != radius) {
+    return FALSE;
+  }
+  corners->window_draw(window, cr);
+  return TRUE;
+}
+
+static void corners_method_cb(FlMethodChannel*, FlMethodCall* call,
+                              gpointer user_data) {
+  HandyCorners* corners = static_cast<HandyCorners*>(user_data);
+  const gchar* method = fl_method_call_get_name(call);
+  g_autoptr(GError) error = nullptr;
+  gboolean responded;
+  if (g_strcmp0(method, "getCorners") == 0) {
+    // The view background is opaque black; clipped corners must show through.
+    const GdkRGBA transparent = {};
+    fl_view_set_background_color(corners->view, &transparent);
+    get_corners(corners->window, &corners->radius, &corners->outline);
+    corners->drawn_radius = -1;
+    g_autoptr(FlValue) value = corners_value(corners->radius, corners->outline);
+    responded = fl_method_call_respond_success(call, value, &error);
+  } else if (g_strcmp0(method, "cornersDrawn") == 0) {
+    FlValue* args = fl_method_call_get_args(call);
+    if (fl_value_get_type(args) == FL_VALUE_TYPE_INT) {
+      corners->drawn_radius = fl_value_get_int(args);
+    } else {  // null: Flutter hands the corners back to libhandy
+      corners->radius = -1;
+      corners->drawn_radius = -1;
+    }
+    // Redraw in the new mode now: until then the outline is doubled or gone.
+    gtk_widget_queue_draw(corners->window);
+    responded = fl_method_call_respond_success(call, nullptr, &error);
+  } else {
+    responded = fl_method_call_respond_not_implemented(call, &error);
+  }
+  if (!responded) {
+    g_warning("Failed to respond to %s: %s", method, error->message);
+  }
+}
+
+// Keeps a method call racing the window close away from freed corners.
+static void corners_gone_cb(FlMethodChannel*, FlMethodCall* call, gpointer) {
+  fl_method_call_respond_not_implemented(call, nullptr);
+}
+
+// The channel lets go of the corners when the engine closes it.
+static void corners_channel_closed_cb(gpointer data) {
+  static_cast<HandyCorners*>(data)->channel_closed = TRUE;
+}
+
+static void free_corners(gpointer data) {
+  HandyCorners* corners = static_cast<HandyCorners*>(data);
+  // The window outlives its data when setup_corners replaces it.
+  g_signal_handlers_disconnect_by_func(
+      corners->window, (gpointer) G_CALLBACK(corners_draw_cb), corners);
+  // A closed channel calls no handler and warns when given one.
+  if (!corners->channel_closed) {
+    fl_method_channel_set_method_call_handler(corners->channel, corners_gone_cb,
+                                              nullptr, nullptr);
+  }
+  g_object_unref(corners->channel);
+  g_free(corners);
+}
+
+static void setup_corners(FlView* view, FlBinaryMessenger* messenger,
+                          gboolean (*window_draw)(GtkWidget*, cairo_t*)) {
+  GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(view));
+  HandyCorners* corners = g_new0(HandyCorners, 1);
+  corners->view = view;
+  corners->window = window;
+  corners->window_draw = window_draw;
+  corners->radius = -1;
+  corners->drawn_radius = -1;
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  corners->channel = fl_method_channel_new(messenger, "handy_window",
+                                           FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(corners->channel, corners_method_cb,
+                                            corners, corners_channel_closed_cb);
+  g_signal_connect(window, "draw", G_CALLBACK(corners_draw_cb), corners);
+  g_object_set_data_full(G_OBJECT(window), "_handy_window_corners_", corners,
+                         free_corners);
+}
+
+static void setup_handy_window(FlPluginRegistrar* registrar) {
+  FlView* view = fl_plugin_registrar_get_view(registrar);
+  FlBinaryMessenger* messenger = fl_plugin_registrar_get_messenger(registrar);
   GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(view));
 
   if (!use_csd(window)) {
@@ -286,6 +444,20 @@ static void setup_handy_window(FlView* view) {
     gtk_widget_show(header_bar);
   }
   gtk_widget_show(GTK_WIDGET(view));
+
+  // Flutter can draw the corners when its view fills the window.
+  if (header_bar == nullptr) {
+    setup_corners(view, messenger, gtk_window_draw);
+  }
+#else
+  // Flutter can draw the corners when its view is the Handy window's child.
+  // libhandy chains to GtkWindow's draw when it does not mask them.
+  if ((HDY_IS_APPLICATION_WINDOW(window) || HDY_IS_WINDOW(window)) &&
+      gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(view))) ==
+          window) {
+    setup_corners(view, messenger,
+                  GTK_WIDGET_CLASS(g_type_class_peek(GTK_TYPE_WINDOW))->draw);
+  }
 #endif  // USE_LIBHANDY
 
   // css
@@ -296,8 +468,7 @@ static void setup_handy_window(FlView* view) {
 }
 
 void handy_window_plugin_register_with_registrar(FlPluginRegistrar* registrar) {
-  FlView* view = fl_plugin_registrar_get_view(registrar);
-  setup_handy_window(view);
+  setup_handy_window(registrar);
 }
 #else
 void handy_window_plugin_register_with_registrar(FlPluginRegistrar*) {}

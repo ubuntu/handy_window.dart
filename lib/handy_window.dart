@@ -45,3 +45,5 @@
 ///  }
 /// ```
 library;
+
+export 'src/handy_window_corners.dart';
