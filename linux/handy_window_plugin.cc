@@ -217,16 +217,28 @@ struct HandyCorners {
   gboolean outline;
   // The radius Flutter has drawn; -1 while it draws none.
   gint drawn_radius;
+  // TRUE once the engine has closed the channel.
+  gboolean channel_closed;
 };
 
 // The corners libhandy draws, see hdy_window_mixin_draw().
 static void get_corners(GtkWidget* window, gint* radius, gboolean* outline) {
   GtkStyleContext* context = gtk_widget_get_style_context(window);
   GdkWindow* gdk_window = gtk_widget_get_window(window);
+  // A visible title bar takes the window's top corners, so the view below it
+  // is square. HdyWindow's placeholder title bar has no height.
+  GtkWidget* titlebar = gtk_window_get_titlebar(GTK_WINDOW(window));
+  gboolean titlebar_takes_top = FALSE;
+  if (titlebar != nullptr && gtk_widget_get_visible(titlebar)) {
+    gint minimum_height;
+    gtk_widget_get_preferred_height(titlebar, &minimum_height, nullptr);
+    titlebar_takes_top = minimum_height > 0;
+  }
   gboolean framed =
       gtk_window_get_decorated(GTK_WINDOW(window)) &&
       !gtk_style_context_has_class(context, "solid-csd") &&
       !gtk_window_is_maximized(GTK_WINDOW(window)) &&
+      !titlebar_takes_top &&
       !(gdk_window != nullptr &&
         (gdk_window_get_state(gdk_window) & GDK_WINDOW_STATE_FULLSCREEN));
   *radius = 0;
@@ -234,7 +246,7 @@ static void get_corners(GtkWidget* window, gint* radius, gboolean* outline) {
     gtk_style_context_get(context, gtk_style_context_get_state(context),
                           GTK_STYLE_PROPERTY_BORDER_RADIUS, radius, nullptr);
   }
-  // The csd.unified decoration-overlay shows only while libhandy masks.
+  // Flutter draws the csd.unified decoration-overlay only with the corners.
   *outline = *radius > 0 && gtk_style_context_has_class(context, "csd") &&
              gtk_style_context_has_class(context, "unified");
 }
@@ -266,7 +278,8 @@ static gboolean corners_draw_cb(GtkWidget* window, cairo_t* cr,
   }
 
   // libhandy masks the corners until Flutter has drawn the current ones.
-  if (corners->drawn_radius != radius) {
+  // Square windows cost libhandy no copy, and it draws their overlay.
+  if (radius == 0 || corners->drawn_radius != radius) {
     return FALSE;
   }
   corners->window_draw(window, cr);
@@ -311,13 +324,21 @@ static void corners_gone_cb(FlMethodChannel*, FlMethodCall* call, gpointer) {
   fl_method_call_respond_not_implemented(call, nullptr);
 }
 
+// The channel lets go of the corners when the engine closes it.
+static void corners_channel_closed_cb(gpointer data) {
+  static_cast<HandyCorners*>(data)->channel_closed = TRUE;
+}
+
 static void free_corners(gpointer data) {
   HandyCorners* corners = static_cast<HandyCorners*>(data);
   // The window outlives its data when setup_corners replaces it.
   g_signal_handlers_disconnect_by_func(
       corners->window, (gpointer) G_CALLBACK(corners_draw_cb), corners);
-  fl_method_channel_set_method_call_handler(corners->channel, corners_gone_cb,
-                                            nullptr, nullptr);
+  // A closed channel calls no handler and warns when given one.
+  if (!corners->channel_closed) {
+    fl_method_channel_set_method_call_handler(corners->channel, corners_gone_cb,
+                                              nullptr, nullptr);
+  }
   g_object_unref(corners->channel);
   g_free(corners);
 }
@@ -335,7 +356,7 @@ static void setup_corners(FlView* view, FlBinaryMessenger* messenger,
   corners->channel = fl_method_channel_new(messenger, "handy_window",
                                            FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(corners->channel, corners_method_cb,
-                                            corners, nullptr);
+                                            corners, corners_channel_closed_cb);
   g_signal_connect(window, "draw", G_CALLBACK(corners_draw_cb), corners);
   g_object_set_data_full(G_OBJECT(window), "_handy_window_corners_", corners,
                          free_corners);

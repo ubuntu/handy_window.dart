@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 /// Rounds window corners in Flutter so libhandy stops copying every frame.
+/// Use once around full-window content; native title bars keep libhandy.
 class HandyWindowCorners extends StatefulWidget {
   const HandyWindowCorners({super.key, required this.child});
 
@@ -21,7 +22,7 @@ class _HandyWindowCornersState extends State<HandyWindowCorners> {
 
   var _radius = 0;
   var _outline = false;
-  // Drops a getCorners reply taken before a cornersChanged call.
+  // Detects a cornersChanged call arriving while getCorners is pending.
   var _cornerChanges = 0;
 
   @override
@@ -48,7 +49,12 @@ class _HandyWindowCornersState extends State<HandyWindowCorners> {
       final corners = (await _channel.invokeMapMethod<String, Object?>(
         'getCorners',
       ))!;
-      if (changes == _cornerChanges) _update(corners);
+      if (changes == _cornerChanges) {
+        _update(corners);
+      } else if (mounted && _active == this) {
+        // Either message can be the newer one, so ask the window again.
+        _getCorners();
+      }
     } on MissingPluginException {
       // Not a supported window: libhandy keeps rounding the corners.
     } on PlatformException {
@@ -133,7 +139,9 @@ class _CornersPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final r = radius;
+    // Match libhandy's radius limit when the window becomes small.
+    final r = radius.clamp(0.0, (size.shortestSide / 2).floorToDouble());
+    if (r == 0) return;
     final w = size.width;
     final h = size.height;
     final halfPixel = 0.5 / devicePixelRatio;

@@ -77,3 +77,23 @@ index fa74baa..3133755 100644
    gtk_widget_grab_focus(GTK_WIDGET(view));
  }
 ```
+
+## GPU-rendered corners
+
+Wrap the full Flutter window once with `HandyWindowCorners` to draw rounded
+corners and their highlight in Flutter instead of copying frames back to the CPU.
+Use the application builder so navigation overlays are rounded too:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:handy_window/handy_window.dart';
+
+void main() {
+  runApp(
+    MaterialApp(
+      builder: (context, child) => HandyWindowCorners(child: child!),
+      home: const Scaffold(),
+    ),
+  );
+}
+```

@@ -25,6 +25,14 @@ jobs:
       - run: flutter pub get
       - run: dart format --set-exit-if-changed .
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: kuhnroyal/flutter-fvm-config-action/setup@v3
+      - run: flutter pub get
+      - run: flutter test
+
   linux:
     runs-on: ${{matrix.os}}
     strategy:
@@ -53,8 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Install cairo dependencies
-      run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
+    - name: Install native build dependencies
+      run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libgtk-3-dev
     - run: sudo snap install --classic flutter
     - run: flutter channel stable # initialize flutter-snap
     - run: git -C $HOME/snap/flutter/common/flutter checkout $(cat .fvmrc | jq -r '.flutter')

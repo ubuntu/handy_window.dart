@@ -37,6 +37,24 @@ void main() {
     expect(tester.state(find.byType(_Stateful)), same(state));
   });
 
+  testWidgets('clamps the corner radius to half the window size', (
+    tester,
+  ) async {
+    _mockWindow(tester, radius: 100);
+    await tester.pumpWidget(const _Window());
+    await tester.pump();
+
+    final pixels = await _capture(tester);
+    expect(pixels.alpha(0, 0), 0);
+    expect(pixels.alpha(75, 0), 255);
+    expect(pixels.alpha(75, 99), 255);
+    expect(pixels.alpha(100, 50), 255);
+
+    await tester.pumpWidget(const _Window(size: Size(1, 1)));
+    await tester.pump();
+    expect((await _capture(tester)).alpha(0, 0), 255);
+  });
+
   testWidgets('reports the radius once drawn and hands it back when removed', (
     tester,
   ) async {
@@ -57,7 +75,10 @@ void main() {
     tester,
   ) async {
     final reply = Completer<Map<Object?, Object?>?>();
-    final drawn = _mockPendingWindow(tester, reply);
+    final drawn = _mockPendingWindow(tester, [
+      reply.future,
+      Future.value({'radius': 30, 'outline': false}),
+    ]);
 
     await tester.pumpWidget(const _Window());
     await _pushCorners(tester, radius: 30, outline: false);
@@ -75,7 +96,7 @@ void main() {
     tester,
   ) async {
     final reply = Completer<Map<Object?, Object?>?>();
-    final drawn = _mockPendingWindow(tester, reply);
+    final drawn = _mockPendingWindow(tester, [reply.future]);
 
     await tester.pumpWidget(const _Window());
     await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
@@ -90,6 +111,32 @@ void main() {
 
     expect((await _capture(tester)).alpha(0, 0), 0);
     expect(drawn, [15]);
+  });
+
+  testWidgets('asks again when a corner change races a replacement', (
+    tester,
+  ) async {
+    final reply = Completer<Map<Object?, Object?>?>();
+    final drawn = _mockPendingWindow(tester, [
+      Future.value({'radius': 15, 'outline': false}),
+      reply.future,
+      Future.value({'radius': 0, 'outline': false}),
+    ]);
+    await tester.pumpWidget(
+      const KeyedSubtree(key: ValueKey('a'), child: _Window()),
+    );
+    await _pumpFrames(tester);
+
+    // The window sends 30, then maximizes before it reads getCorners.
+    await tester.pumpWidget(
+      const KeyedSubtree(key: ValueKey('b'), child: _Window()),
+    );
+    await _pushCorners(tester, radius: 30, outline: false);
+    reply.complete({'radius': 0, 'outline': false});
+    await _pumpFrames(tester);
+
+    expect((await _capture(tester)).alpha(0, 0), 255);
+    expect(drawn.last, 0);
   });
 
   testWidgets(
@@ -206,10 +253,11 @@ void main() {
   });
 }
 
-/// getCorners waits for [reply]; returns the cornersDrawn radii.
+/// Each getCorners call waits for the next of [replies]; returns the
+/// cornersDrawn radii.
 List<int?> _mockPendingWindow(
   WidgetTester tester,
-  Completer<Map<Object?, Object?>?> reply,
+  List<Future<Map<Object?, Object?>?>> replies,
 ) {
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -218,7 +266,7 @@ List<int?> _mockPendingWindow(
   messenger.setMockMethodCallHandler(_channel, (call) async {
     switch (call.method) {
       case 'getCorners':
-        return await reply.future;
+        return await replies.removeAt(0);
       case 'cornersDrawn':
         drawn.add(call.arguments as int?);
         return null;
@@ -306,11 +354,12 @@ class _Pixels {
   int alpha(int x, int y) => rgba(x, y)[3];
 }
 
-/// A 200x100 opaque black window content.
+/// Opaque black window content, normally 200x100.
 class _Window extends StatelessWidget {
-  const _Window({this.child});
+  const _Window({this.child, this.size = const Size(200, 100)});
 
   final Widget? child;
+  final Size size;
 
   @override
   Widget build(BuildContext context) {
@@ -319,8 +368,8 @@ class _Window extends StatelessWidget {
         key: _windowKey,
         child: HandyWindowCorners(
           child: SizedBox(
-            width: 200,
-            height: 100,
+            width: size.width,
+            height: size.height,
             child: ColoredBox(color: const Color(0xFF000000), child: child),
           ),
         ),
